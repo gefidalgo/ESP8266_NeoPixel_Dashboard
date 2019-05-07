@@ -6,12 +6,6 @@
 // DS3231 GND --> GND
 // SQW --->  (Pin19) Don't forget to pullup (4.7k to 10k to VCC)
 
-#if defined(ESP8266)
-#include <pgmspace.h>
-#else
-#include <avr/pgmspace.h>
-#endif
-
 /* for software wire use below
 #include <SoftwareWire.h>  // must be included here so that Arduino library object file references work
 #include <RtcDS3231.h>
@@ -65,17 +59,29 @@ void setup ()
     pinMode(RtcSquareWavePin, INPUT);
 
     //--------RTC SETUP ------------
-    Rtc.Begin();
     // if you are using ESP-01 then uncomment the line below to reset the pins to
     // the available pins for SDA, SCL
     // Wire.begin(0, 2); // due to limited pins, use pin 0 and 2 for SDA, SCL
+    
+    Rtc.Begin();
 
     RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
 
     if (!Rtc.IsDateTimeValid()) 
     {
-        Serial.println("RTC lost confidence in the DateTime!");
-        Rtc.SetDateTime(compiled);
+        if (Rtc.LastError() != 0)
+        {
+            // we have a communications error
+            // see https://www.arduino.cc/en/Reference/WireEndTransmission for 
+            // what the number means
+            Serial.print("RTC communications error = ");
+            Serial.println(Rtc.LastError());
+        }
+        else
+        {
+            Serial.println("RTC lost confidence in the DateTime!");
+            Rtc.SetDateTime(compiled);
+        }
     }
 
     if (!Rtc.GetIsRunning())
@@ -124,7 +130,18 @@ void loop ()
 {
     if (!Rtc.IsDateTimeValid()) 
     {
-        Serial.println("RTC lost confidence in the DateTime!");
+        if (Rtc.LastError() != 0)
+        {
+            // we have a communications error
+            // see https://www.arduino.cc/en/Reference/WireEndTransmission for 
+            // what the number means
+            Serial.print("RTC communications error = ");
+            Serial.println(Rtc.LastError());
+        }
+        else
+        {
+            Serial.println("RTC lost confidence in the DateTime!");
+        }
     }
 
     RtcDateTime now = Rtc.GetDateTime();

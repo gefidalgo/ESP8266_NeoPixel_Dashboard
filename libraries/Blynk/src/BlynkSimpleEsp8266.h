@@ -15,6 +15,12 @@
 #error This code is intended to run on the ESP8266 platform! Please check your Tools->Board setting.
 #endif
 
+#include <version.h>
+
+#if ESP_SDK_VERSION_NUMBER < 0x020200
+#error Please update your ESP8266 Arduino Core
+#endif
+
 #include <BlynkApiArduino.h>
 #include <Blynk/BlynkProtocol.h>
 #include <Adapters/BlynkArduinoClient.h>
@@ -33,13 +39,15 @@ public:
     {
         BLYNK_LOG2(BLYNK_F("Connecting to "), ssid);
         WiFi.mode(WIFI_STA);
-        if (pass && strlen(pass)) {
-            WiFi.begin(ssid, pass);
-        } else {
-            WiFi.begin(ssid);
+        if (WiFi.status() != WL_CONNECTED) {
+            if (pass && strlen(pass)) {
+                WiFi.begin(ssid, pass);
+            } else {
+                WiFi.begin(ssid);
+            }
         }
         while (WiFi.status() != WL_CONNECTED) {
-            ::delay(500);
+            BlynkDelay(500);
         }
         BLYNK_LOG1(BLYNK_F("Connected to WiFi"));
 

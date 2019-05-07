@@ -4,7 +4,7 @@
 #define __RTCDS1307_H__
 
 #include <Arduino.h>
-#include <RtcDateTime.h>
+#include "RtcDateTime.h"
 #include "RtcUtility.h"
 
 //I2C Slave Address  
@@ -16,6 +16,7 @@ const uint8_t DS1307_REG_STATUS     = 0x00;
 const uint8_t DS1307_REG_CONTROL    = 0x07;
 const uint8_t DS1307_REG_RAMSTART   = 0x08;
 const uint8_t DS1307_REG_RAMEND     = 0x3f;
+const uint8_t DS1307_REG_RAMSIZE = DS1307_REG_RAMEND - DS1307_REG_RAMSTART;
 
 //DS1307 Register Data Size if not just 1
 const uint8_t DS1307_REG_TIMEDATE_SIZE = 7;
@@ -43,13 +44,19 @@ template<class T_WIRE_METHOD> class RtcDS1307
 {
 public:
     RtcDS1307(T_WIRE_METHOD& wire) :
-        _wire(wire)
+        _wire(wire),
+        _lastError(0)
     {
     }
 
     void Begin()
     {
         _wire.begin();
+    }
+
+    uint8_t LastError()
+    {
+        return _lastError;
     }
 
     bool IsDateTimeValid()
@@ -62,6 +69,7 @@ public:
         uint8_t sreg = getReg(DS1307_REG_STATUS);
         return !(sreg & _BV(DS1307_CH));
     }
+
     void SetIsRunning(bool isRunning)
     {
         uint8_t sreg = getReg(DS1307_REG_STATUS);
@@ -89,18 +97,27 @@ public:
         _wire.write(Uint8ToBcd(dt.Minute()));
         _wire.write(Uint8ToBcd(dt.Hour())); // 24 hour mode only
 
-        _wire.write(Uint8ToBcd(dt.DayOfWeek()));
+        // RTC Hardware Day of Week is 1-7, 1 = Monday
+        // convert our Day of Week to Rtc Day of Week
+        uint8_t rtcDow = RtcDateTime::ConvertDowToRtc(dt.DayOfWeek());
+
+        _wire.write(Uint8ToBcd(rtcDow)); 
         _wire.write(Uint8ToBcd(dt.Day()));
         _wire.write(Uint8ToBcd(dt.Month()));
         _wire.write(Uint8ToBcd(dt.Year() - 2000));
 
-        _wire.endTransmission();
+        _lastError = _wire.endTransmission();
     }
+
     RtcDateTime GetDateTime()
     {
         _wire.beginTransmission(DS1307_ADDRESS);
         _wire.write(DS1307_REG_TIMEDATE);
-        _wire.endTransmission();
+        _lastError = _wire.endTransmission();
+        if (_lastError != 0)
+        {
+            RtcDateTime(0);
+        }
 
         _wire.requestFrom(DS1307_ADDRESS, DS1307_REG_TIMEDATE_SIZE);
         uint8_t second = BcdToUint8(_wire.read() & 0x7F);
@@ -124,6 +141,7 @@ public:
             setReg(address, value);
         }
     }
+
     uint8_t GetMemory(uint8_t memoryAddress)
     {
         uint8_t value = 0;
@@ -152,7 +170,7 @@ public:
                 countWritten++;
             }
 
-            _wire.endTransmission();
+            _lastError = _wire.endTransmission();
         }
         return countWritten;
     }
@@ -163,17 +181,25 @@ public:
         uint8_t countRead = 0;
         if (address <= DS1307_REG_RAMEND)
         {
-            countBytes = min(countBytes, DS1307_REG_RAMEND - DS1307_REG_RAMSTART);
+            if (countBytes > DS1307_REG_RAMSIZE)
+            {
+                countBytes = DS1307_REG_RAMSIZE;
+            }
+
             _wire.beginTransmission(DS1307_ADDRESS);
             _wire.write(address);
-            _wire.endTransmission();
+            _lastError = _wire.endTransmission();
+            if (_lastError != 0)
+            {
+                return 0;
+            }
 
-            _wire.requestFrom(DS1307_ADDRESS, countBytes);
+            countRead = _wire.requestFrom(DS1307_ADDRESS, countBytes);
+            countBytes = countRead;
 
             while (countBytes-- > 0)
             {
                 *pValue++ = _wire.read();
-                countRead++;
             }
         }
 
@@ -187,12 +213,17 @@ public:
 
 private:
     T_WIRE_METHOD& _wire;
+    uint8_t _lastError;
 
     uint8_t getReg(uint8_t regAddress)
     {
         _wire.beginTransmission(DS1307_ADDRESS);
         _wire.write(regAddress);
-        _wire.endTransmission();
+        _lastError = _wire.endTransmission();
+        if (_lastError != 0)
+        {
+            return 0;
+        }
 
         // control register
         _wire.requestFrom(DS1307_ADDRESS, (uint8_t)1);
@@ -206,7 +237,7 @@ private:
         _wire.beginTransmission(DS1307_ADDRESS);
         _wire.write(regAddress);
         _wire.write(regValue);
-        _wire.endTransmission();
+        _lastError = _wire.endTransmission();
     }
 };
 

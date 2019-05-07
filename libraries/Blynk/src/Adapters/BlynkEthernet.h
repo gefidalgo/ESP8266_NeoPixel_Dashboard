@@ -15,6 +15,12 @@
 #define BLYNK_INFO_CONNECTION "W5000"
 #endif
 
+#ifdef BLYNK_USE_SSL
+  #define BLYNK_SERVER_PORT BLYNK_DEFAULT_PORT_SSL
+#else
+  #define BLYNK_SERVER_PORT BLYNK_DEFAULT_PORT
+#endif
+
 #include <BlynkApiArduino.h>
 #include <Blynk/BlynkProtocol.h>
 #include <Adapters/BlynkArduinoClient.h>
@@ -30,7 +36,7 @@ public:
 
     void config(const char* auth,
                 const char* domain = BLYNK_DEFAULT_DOMAIN,
-                uint16_t    port   = BLYNK_DEFAULT_PORT)
+                uint16_t    port   = BLYNK_SERVER_PORT)
     {
         Base::begin(auth);
         this->conn.begin(domain, port);
@@ -38,7 +44,7 @@ public:
 
     void config(const char* auth,
                 IPAddress   ip,
-                uint16_t    port = BLYNK_DEFAULT_PORT)
+                uint16_t    port = BLYNK_SERVER_PORT)
     {
         Base::begin(auth);
         this->conn.begin(ip, port);
@@ -47,7 +53,7 @@ public:
     // DHCP with domain
     void begin( const char* auth,
                 const char* domain = BLYNK_DEFAULT_DOMAIN,
-                uint16_t port      = BLYNK_DEFAULT_PORT,
+                uint16_t port      = BLYNK_SERVER_PORT,
                 const byte mac[]   = NULL)
     {
         BLYNK_LOG1(BLYNK_F("Getting IP..."));
@@ -55,7 +61,7 @@ public:
             BLYNK_FATAL(BLYNK_F("DHCP Failed!"));
         }
         // give the Ethernet shield a second to initialize:
-        ::delay(1000);
+        BlynkDelay(1000);
         IPAddress myip = Ethernet.localIP();
         BLYNK_LOG_IP("IP:", myip);
 
@@ -72,9 +78,9 @@ public:
                 const byte mac[] = NULL)
     {
         BLYNK_LOG1(BLYNK_F("Using static IP"));
-        Ethernet.begin(SelectMacAddress(auth, mac), local);
+        Ethernet.begin(SelectMacAddress(auth, mac), local, dns);
         // give the Ethernet shield a second to initialize:
-        ::delay(1000);
+        BlynkDelay(1000);
         IPAddress myip = Ethernet.localIP();
         BLYNK_LOG_IP("IP:", myip);
 
@@ -95,7 +101,7 @@ public:
         BLYNK_LOG1(BLYNK_F("Using static IP"));
         Ethernet.begin(SelectMacAddress(auth, mac), local, dns, gateway, subnet);
         // give the Ethernet shield a second to initialize:
-        ::delay(1000);
+        BlynkDelay(1000);
         IPAddress myip = Ethernet.localIP();
         BLYNK_LOG_IP("IP:", myip);
 
@@ -106,7 +112,7 @@ public:
     // DHCP with server IP
     void begin( const char* auth,
                 IPAddress addr,
-                uint16_t port    = BLYNK_DEFAULT_PORT,
+                uint16_t port    = BLYNK_SERVER_PORT,
                 const byte mac[] = NULL)
     {
         BLYNK_LOG1(BLYNK_F("Getting IP..."));
@@ -114,7 +120,7 @@ public:
             BLYNK_FATAL(BLYNK_F("DHCP Failed!"));
         }
         // give the Ethernet shield a second to initialize:
-        ::delay(1000);
+        BlynkDelay(1000);
         IPAddress myip = Ethernet.localIP();
         BLYNK_LOG_IP("IP:", myip);
 
@@ -132,7 +138,7 @@ public:
         BLYNK_LOG1(BLYNK_F("Using static IP"));
         Ethernet.begin(SelectMacAddress(auth, mac), local);
         // give the Ethernet shield a second to initialize:
-        ::delay(1000);
+        BlynkDelay(1000);
         IPAddress myip = Ethernet.localIP();
         BLYNK_LOG_IP("IP:", myip);
 
@@ -153,7 +159,7 @@ public:
         BLYNK_LOG1(BLYNK_F("Using static IP"));
         Ethernet.begin(SelectMacAddress(auth, mac), local, dns, gateway, subnet);
         // give the Ethernet shield a second to initialize:
-        ::delay(1000);
+        BlynkDelay(1000);
         IPAddress myip = Ethernet.localIP();
         BLYNK_LOG_IP("IP:", myip);
 

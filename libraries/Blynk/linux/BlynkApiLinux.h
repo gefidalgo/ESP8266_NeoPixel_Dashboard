@@ -13,39 +13,9 @@
 
 #include <Blynk/BlynkApi.h>
 
-#define _POSIX_C_SOURCE 200809L
-#include <time.h>
-#include <unistd.h>
-
 #ifndef BLYNK_INFO_DEVICE
     #define BLYNK_INFO_DEVICE  "Linux"
 #endif
-
-static inline
-void delay(unsigned long ms)
-{
-    usleep(ms * 1000);
-}
-
-static
-millis_time_t millis()
-{
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts );
-    return ( ts.tv_sec * 1000 + ts.tv_nsec / 1000000L );
-}
-
-template<class Proto>
-void BlynkApi<Proto>::Init()
-{
-}
-
-template<class Proto>
-BLYNK_FORCE_INLINE
-millis_time_t BlynkApi<Proto>::getMillis()
-{
-    return millis();
-}
 
 #ifdef BLYNK_NO_INFO
 
@@ -59,7 +29,7 @@ template<class Proto>
 BLYNK_FORCE_INLINE
 void BlynkApi<Proto>::sendInfo()
 {
-    static const char profile[] BLYNK_PROGMEM =
+    static const char profile[] BLYNK_PROGMEM = "blnkinf\0"
         BLYNK_PARAM_KV("ver"    , BLYNK_VERSION)
         BLYNK_PARAM_KV("h-beat" , BLYNK_TOSTRING(BLYNK_HEARTBEAT))
         BLYNK_PARAM_KV("buff-in", BLYNK_TOSTRING(BLYNK_MAX_READBYTES))
@@ -72,15 +42,22 @@ void BlynkApi<Proto>::sendInfo()
 #ifdef BLYNK_INFO_CONNECTION
         BLYNK_PARAM_KV("con"    , BLYNK_INFO_CONNECTION)
 #endif
+#ifdef BOARD_FIRMWARE_VERSION
+        BLYNK_PARAM_KV("fw"     , BOARD_FIRMWARE_VERSION)
+#endif
         BLYNK_PARAM_KV("build"  , __DATE__ " " __TIME__)
+        "\0"
     ;
-    const size_t profile_len = sizeof(profile)-1;
+    const size_t profile_len = sizeof(profile)-8-2;
 
-    char mem_dyn[32];
+    char mem_dyn[64];
     BlynkParam profile_dyn(mem_dyn, 0, sizeof(mem_dyn));
     profile_dyn.add_key("conn", "Socket");
+#ifdef BOARD_TEMPLATE_ID
+    profile_dyn.add_key("tmpl", BOARD_TEMPLATE_ID);
+#endif
 
-    static_cast<Proto*>(this)->sendCmd(BLYNK_CMD_HARDWARE_INFO, 0, profile, profile_len, profile_dyn.getBuffer(), profile_dyn.getLength());
+    static_cast<Proto*>(this)->sendCmd(BLYNK_CMD_INTERNAL, 0, profile+8, profile_len, profile_dyn.getBuffer(), profile_dyn.getLength());
     return;
 }
 
@@ -95,8 +72,8 @@ void BlynkApi<Proto>::processCmd(const void* buff, size_t len)
     if (it >= param.end())
         return;
     const char* cmd = it.asStr();
-    const uint16_t cmd16 = *(uint16_t*)cmd;
-
+    uint16_t cmd16;
+    memcpy(&cmd16, cmd, sizeof(cmd16));
     if (++it >= param.end())
         return;
 
@@ -163,7 +140,7 @@ void BlynkApi<Proto>::processCmd(const void* buff, size_t len)
     } break;
     default:
         BLYNK_LOG2(BLYNK_F("Invalid HW cmd: "), cmd);
-        static_cast<Proto*>(this)->sendCmd(BLYNK_CMD_RESPONSE, static_cast<Proto*>(this)->currentMsgId, NULL, BLYNK_ILLEGAL_COMMAND);
+        static_cast<Proto*>(this)->sendCmd(BLYNK_CMD_RESPONSE, static_cast<Proto*>(this)->msgIdOutOverride, NULL, BLYNK_ILLEGAL_COMMAND);
     }
 }
 

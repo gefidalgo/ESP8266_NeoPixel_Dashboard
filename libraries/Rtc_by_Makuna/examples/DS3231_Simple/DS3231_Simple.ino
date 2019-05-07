@@ -5,12 +5,6 @@
 // DS3231 VCC --> 3.3v or 5v
 // DS3231 GND --> GND
 
-#if defined(ESP8266)
-#include <pgmspace.h>
-#else
-#include <avr/pgmspace.h>
-#endif
-
 /* for software wire use below
 #include <SoftwareWire.h>  // must be included here so that Arduino library object file references work
 #include <RtcDS3231.h>
@@ -35,11 +29,11 @@ void setup ()
     Serial.println(__TIME__);
 
     //--------RTC SETUP ------------
-    Rtc.Begin();
-
     // if you are using ESP-01 then uncomment the line below to reset the pins to
     // the available pins for SDA, SCL
     // Wire.begin(0, 2); // due to limited pins, use pin 0 and 2 for SDA, SCL
+    
+    Rtc.Begin();
 
     RtcDateTime compiled = RtcDateTime(__DATE__, __TIME__);
     printDateTime(compiled);
@@ -47,17 +41,28 @@ void setup ()
 
     if (!Rtc.IsDateTimeValid()) 
     {
-        // Common Cuases:
-        //    1) first time you ran and the device wasn't running yet
-        //    2) the battery on the device is low or even missing
+        if (Rtc.LastError() != 0)
+        {
+            // we have a communications error
+            // see https://www.arduino.cc/en/Reference/WireEndTransmission for 
+            // what the number means
+            Serial.print("RTC communications error = ");
+            Serial.println(Rtc.LastError());
+        }
+        else
+        {
+            // Common Cuases:
+            //    1) first time you ran and the device wasn't running yet
+            //    2) the battery on the device is low or even missing
 
-        Serial.println("RTC lost confidence in the DateTime!");
+            Serial.println("RTC lost confidence in the DateTime!");
 
-        // following line sets the RTC to the date & time this sketch was compiled
-        // it will also reset the valid flag internally unless the Rtc device is
-        // having an issue
+            // following line sets the RTC to the date & time this sketch was compiled
+            // it will also reset the valid flag internally unless the Rtc device is
+            // having an issue
 
-        Rtc.SetDateTime(compiled);
+            Rtc.SetDateTime(compiled);
+        }
     }
 
     if (!Rtc.GetIsRunning())
@@ -91,17 +96,30 @@ void loop ()
 {
     if (!Rtc.IsDateTimeValid()) 
     {
-        // Common Cuases:
-        //    1) the battery on the device is low or even missing and the power line was disconnected
-        Serial.println("RTC lost confidence in the DateTime!");
+        if (Rtc.LastError() != 0)
+        {
+            // we have a communications error
+            // see https://www.arduino.cc/en/Reference/WireEndTransmission for 
+            // what the number means
+            Serial.print("RTC communications error = ");
+            Serial.println(Rtc.LastError());
+        }
+        else
+        {
+            // Common Cuases:
+            //    1) the battery on the device is low or even missing and the power line was disconnected
+            Serial.println("RTC lost confidence in the DateTime!");
+        }
     }
 
     RtcDateTime now = Rtc.GetDateTime();
     printDateTime(now);
     Serial.println();
 
-    RtcTemperature temp = Rtc.GetTemperature();
-    Serial.print(temp.AsFloat());
+	RtcTemperature temp = Rtc.GetTemperature();
+	temp.Print(Serial);
+	// you may also get the temperature as a float and print it
+    // Serial.print(temp.AsFloatDegC());
     Serial.println("C");
 
     delay(10000); // ten seconds

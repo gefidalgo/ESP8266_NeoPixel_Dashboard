@@ -17,6 +17,7 @@
 #include <Blynk/BlynkDebug.h>
 
 #define BLYNK_PARAM_KV(k, v) k "\0" v "\0"
+#define BLYNK_PARAM_PLACEHOLDER_64 "PlaceholderPlaceholderPlaceholderPlaceholderPlaceholderPlaceholder"
 
 class BlynkParam
 {
@@ -24,37 +25,40 @@ public:
     class iterator
     {
     public:
-        iterator(char* c) : ptr(c) {}
-        static iterator invalid() { return iterator(NULL); }
+        iterator(const char* c, const char* l) : ptr(c), limit(l) {}
+        static iterator invalid() { return iterator(NULL, NULL); }
 
         operator const char* () const   { return asStr(); }
         operator int () const           { return asInt(); }
         const char* asStr() const       { return ptr; }
         const char* asString() const    { return ptr; }
-        int         asInt() const       { return atoi(ptr); }
-        long        asLong() const      { return atol(ptr); }
+        int         asInt() const       { if(!isValid()) return 0; return atoi(ptr); }
+        long        asLong() const      { if(!isValid()) return 0; return atol(ptr); }
         //long long   asLongLong() const  { return atoll(ptr); }
 #ifndef BLYNK_NO_FLOAT
-        double      asDouble() const    { return atof(ptr); }
-        float       asFloat() const     { return atof(ptr); }
+        double      asDouble() const    { if(!isValid()) return 0; return atof(ptr); }
+        float       asFloat() const     { if(!isValid()) return 0; return atof(ptr); }
 #endif
-        bool isValid() const            { return ptr != NULL; }
-        bool isEmpty() const            { return *ptr == '\0'; }
+        bool isValid() const            { return ptr != NULL && ptr < limit; }
+        bool isEmpty() const            { if(!isValid()) return true; return *ptr == '\0'; }
 
         bool operator <  (const iterator& it) const { return ptr < it.ptr; }
         bool operator >= (const iterator& it) const { return ptr >= it.ptr; }
 
         iterator& operator ++() {
-            ptr += strlen(ptr)+1;
+            if(isValid()) {
+                ptr += strlen(ptr) + 1;
+            }
             return *this;
         }
     private:
         const char* ptr;
+        const char* limit;
     };
 
 public:
     explicit
-    BlynkParam(void* addr, size_t length)
+    BlynkParam(const void* addr, size_t length)
         : buff((char*)addr), len(length), buff_size(length)
     {}
 
@@ -74,8 +78,8 @@ public:
 #endif
     bool isEmpty() const            { return *buff == '\0'; }
 
-    iterator begin() const { return iterator(buff); }
-    iterator end() const   { return iterator(buff+len); }
+    iterator begin() const { return iterator(buff, buff+len); }
+    iterator end() const   { return iterator(buff+len, buff+len); }
 
     iterator operator[](int index) const;
     iterator operator[](const char* key) const;
@@ -177,6 +181,10 @@ void BlynkParam::add(const void* b, size_t l)
 inline
 void BlynkParam::add(const char* str)
 {
+    if (str == NULL) {
+        buff[len++] = '\0';
+        return;
+    }
     add(str, strlen(str)+1);
 }
 
@@ -281,7 +289,7 @@ void BlynkParam::add(const __FlashStringHelper* ifsh)
     void BlynkParam::add(double value)
     {
         char str[33];
-        dtostrf(value, 5, 3, str);
+        dtostrf(value, 5, 7, str);
         add(str);
     }
 #endif
@@ -328,7 +336,7 @@ void BlynkParam::add(const __FlashStringHelper* ifsh)
 
 #ifndef BLYNK_NO_FLOAT
 
-#if defined(ESP8266)
+#if defined(BLYNK_USE_INTERNAL_DTOSTRF)
 
     extern char* dtostrf_internal(double number, signed char width, unsigned char prec, char *s);
 
@@ -344,7 +352,7 @@ void BlynkParam::add(const __FlashStringHelper* ifsh)
     void BlynkParam::add(double value)
     {
         char str[33];
-        dtostrf_internal(value, 5, 3, str);
+        dtostrf_internal(value, 5, 7, str);
         add(str);
     }
 
@@ -359,7 +367,7 @@ void BlynkParam::add(const __FlashStringHelper* ifsh)
     inline
     void BlynkParam::add(double value)
     {
-        len += snprintf(buff+len, buff_size-len, "%2.3f", value)+1;
+        len += snprintf(buff+len, buff_size-len, "%2.7f", value)+1;
     }
 
 #endif

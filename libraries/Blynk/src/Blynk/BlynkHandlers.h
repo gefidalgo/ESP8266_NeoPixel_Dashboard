@@ -147,9 +147,6 @@
   #define V127 127
 #endif
 
-#define BLYNK_CONCAT(a, b) a ## b
-#define BLYNK_CONCAT2(a, b) BLYNK_CONCAT(a, b)
-
 // Initial syntax:
 #define BLYNK_WRITE_2(pin) \
     void BlynkWidgetWrite ## pin (BlynkReq BLYNK_UNUSED &request, const BlynkParam BLYNK_UNUSED &param)
@@ -179,8 +176,6 @@
 // Additional handlers
 #define BLYNK_CONNECTED()    void BlynkOnConnected()
 #define BLYNK_DISCONNECTED() void BlynkOnDisconnected()
-
-#define BLYNK_APP_CONNECTED() void BlynkOnAppConnected()
 
 // Advanced functions
 
@@ -233,8 +228,17 @@ void BlynkNoOpCbk();
 BLYNK_CONNECTED();
 BLYNK_DISCONNECTED();
 
-BLYNK_APP_CONNECTED();
+// Internal Virtual Pins
+BLYNK_WRITE(InternalPinACON);
+BLYNK_WRITE(InternalPinADIS);
+BLYNK_WRITE(InternalPinRTC);
+BLYNK_WRITE(InternalPinOTA);
 
+// Aliases
+#define BLYNK_APP_CONNECTED()    BLYNK_WRITE(InternalPinACON)
+#define BLYNK_APP_DISCONNECTED() BLYNK_WRITE(InternalPinADIS)
+
+// Regular Virtual Pins
 BLYNK_READ_DEFAULT();
 BLYNK_WRITE_DEFAULT();
 

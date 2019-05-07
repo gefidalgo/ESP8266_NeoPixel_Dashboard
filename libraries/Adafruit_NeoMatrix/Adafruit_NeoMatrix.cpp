@@ -49,16 +49,14 @@
 // Constructor for single matrix:
 Adafruit_NeoMatrix::Adafruit_NeoMatrix(int w, int h, uint8_t pin,
   uint8_t matrixType, neoPixelType ledType) : Adafruit_GFX(w, h),
-  Adafruit_NeoPixel(w * h, pin, ledType), 
-  type(matrixType), matrixWidth(w),
+  Adafruit_NeoPixel(w * h, pin, ledType), type(matrixType), matrixWidth(w),
   matrixHeight(h), tilesX(0), tilesY(0), remapFn(NULL) { }
 
 // Constructor for tiled matrices:
 Adafruit_NeoMatrix::Adafruit_NeoMatrix(uint8_t mW, uint8_t mH, uint8_t tX,
   uint8_t tY, uint8_t pin, uint8_t matrixType, neoPixelType ledType) :
-  Adafruit_GFX(mW * tX, mH * tY), 
-  //Adafruit_NeoPixel(mW * mH * tX * tY, pin,ledType), 
-  type(matrixType), matrixWidth(mW), matrixHeight(mH), tilesX(tX),
+  Adafruit_GFX(mW * tX, mH * tY), Adafruit_NeoPixel(mW * mH * tX * tY, pin,
+  ledType), type(matrixType), matrixWidth(mW), matrixHeight(mH), tilesX(tX),
   tilesY(tY), remapFn(NULL) { }
 
 // Expand 16-bit input color (Adafruit_GFX colorspace) to 24-bit (NeoPixel)
@@ -216,4 +214,4 @@ void Adafruit_NeoMatrix::setRemapFunction(uint16_t (*fn)(uint16_t, uint16_t)) {
 void Adafruit_NeoMatrix::setNPixelColor(int i, uint16_t color)
 {
   setPixelColor(i, color);
-}
+}															  

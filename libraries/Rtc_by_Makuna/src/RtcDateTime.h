@@ -3,6 +3,22 @@
 #ifndef __RTCDATETIME_H__
 #define __RTCDATETIME_H__
 
+// ESP32 complains if not included
+#if defined(ARDUINO_ARCH_ESP32)
+#include <inttypes.h>
+#endif
+
+enum DayOfWeek
+{
+    DayOfWeek_Sunday = 0,
+    DayOfWeek_Monday,
+    DayOfWeek_Tuesday,
+    DayOfWeek_Wednesday,
+    DayOfWeek_Thursday,
+    DayOfWeek_Friday,
+    DayOfWeek_Saturday,
+};
+
 const uint16_t c_OriginYear = 2000;
 const uint32_t c_Epoch32OfOriginYear = 946684800;
 extern const uint8_t c_daysInMonth[] PROGMEM;
@@ -11,11 +27,11 @@ class RtcDateTime
 {
 public:
     RtcDateTime(uint32_t secondsFrom2000 = 0);
-    RtcDateTime(uint16_t year, 
+    RtcDateTime(uint16_t year,
             uint8_t month,
             uint8_t dayOfMonth,
-            uint8_t hour, 
-            uint8_t minute, 
+            uint8_t hour,
+            uint8_t minute,
             uint8_t second) :
             _yearFrom2000((year >= c_OriginYear) ? year - c_OriginYear : year),
             _month(month),
@@ -53,6 +69,7 @@ public:
     {
         return _second;
     }
+    // 0 = Sunday, 1 = Monday, ... 6 = Saturday
     uint8_t DayOfWeek() const;
 
     // 32-bit times as seconds since 1/1/2000
@@ -66,10 +83,17 @@ public:
         *this = after;
     }
 
+    // remove seconds
+    void operator -= (uint32_t seconds)
+    {
+        RtcDateTime before = RtcDateTime( TotalSeconds() - seconds );
+        *this = before;
+    }
+
     // allows for comparisons to just work (==, <, >, <=, >=, !=)
-    operator uint32_t() const 
-    { 
-        return TotalSeconds(); 
+    operator uint32_t() const
+    {
+        return TotalSeconds();
     }
 
     // Epoch32 support
@@ -90,6 +114,26 @@ public:
     void InitWithEpoch64Time(uint64_t time)
     {
         _initWithSecondsFrom2000<uint64_t>(time - c_Epoch32OfOriginYear);
+    }
+
+    void InitWithIso8601(const char* date);
+
+    
+    // convert our Day of Week to Rtc Day of Week 
+    // RTC Hardware Day of Week is 1-7, 1 = Monday
+    static uint8_t ConvertDowToRtc(uint8_t dow)
+    {
+        if (dow == 0)
+        {
+            dow = 7;
+        }
+        return dow;
+    }
+
+    // convert Rtc Day of Week to our Day of Week
+    static uint8_t ConvertRtcToDow(uint8_t rtcDow)
+    {
+        return (rtcDow % 7);
     }
 
 protected:
